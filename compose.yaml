@@ -1,0 +1,39 @@
+services:
+  app:
+    build: ./apps/backend/.
+    ports:
+      - "3000:3000"
+    environment:
+      DATABASE_URL: postgresql://postgres:secret@db:5432/linkshortener
+      REDIS_URL: redis://cache:6379
+      JWT_SECRET: changeme
+    depends_on:
+      db:
+        condition: service_healthy
+      cache:
+        condition: service_started
+
+  db:
+    image: postgres:16-alpine
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: linkshortener
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  cache:
+    image: redis:7-alpine
+    volumes:
+      - redis_data:/data
+
+volumes:
+  postgres_data:
+  redis_data:
