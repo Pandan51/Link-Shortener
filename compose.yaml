@@ -7,6 +7,7 @@ services:
       DATABASE_URL: postgresql://postgres:secret@db:5432/linkshortener
       REDIS_URL: redis://cache:6379
       JWT_SECRET: changeme
+      JWT_EXPIRES_IN: 15m
     depends_on:
       db:
         condition: service_healthy
