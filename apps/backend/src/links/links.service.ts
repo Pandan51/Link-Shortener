@@ -7,12 +7,12 @@ import { Link } from '../../generated/prisma/client';
 export class LinksService {
   constructor(private readonly prisma: PrismaService) {}
 
-  async create(dto: CreateLinkDto) {
+  async create(dto: CreateLinkDto, userId: string) {
     return this.prisma.link.create({
       data: {
         ...dto,
         shortCode: Math.random().toString(36).slice(2, 8),
-        userId: 'anonymous',
+        userId,
       },
     });
   }
