@@ -10,10 +10,12 @@ Learning project — see `PROJECT_PLAN.md` for the full roadmap, tech stack, tar
 
 ## Current status
 - **Step 1 (CRUD)** — done. `LinksModule`: `POST/GET /links`, `GET /links/:code`, `DELETE /links/:id`.
-- **Step 2 (Auth)** — partially done:
-  - `POST /auth/register`, `POST /auth/login` (returns short-lived JWT access token) — done
-  - `JwtStrategy` + `JwtAuthGuard` — done, protecting `POST /links` (`req.user.userId` replaces the old hardcoded `'anonymous'`)
-  - **Not started yet**: `POST /auth/refresh` + `POST /auth/logout` with refresh token rotation (`RefreshToken` model already exists in `schema.prisma`) and httpOnly cookies
+- **Step 2 (Auth)** — done:
+  - `POST /auth/register`, `POST /auth/login` — login returns `{ accessToken }` in the body and sets a `refreshToken` as an `httpOnly` cookie (also stored in the `RefreshToken` table)
+  - `JwtStrategy` + `JwtAuthGuard` — protecting `POST /links` (`req.user.userId` replaces the old hardcoded `'anonymous'`)
+  - `POST /auth/refresh` — verifies the refresh JWT (`JWT_REFRESH_SECRET`) + checks the DB row, then rotates: deletes the old `RefreshToken` row and issues a new access/refresh pair
+  - `POST /auth/logout` — deletes the `RefreshToken` row and clears the cookie
+  - **Possible future improvement (deferred, not started)**: refresh token reuse detection — instead of `delete` on rotation, soft-delete/flag rows as `revoked`. If a `revoked` token is ever presented again (signal of theft), revoke *all* refresh tokens for that user, forcing re-login everywhere. Should be addable later without reworking the current flow (just changes what `refresh()` does with the old row + adds a check).
 - **Docker stack** — `docker compose up -d --build` works end to end (db healthy, cache, app on `localhost:3000`).
 
 ## Gotchas discovered (don't re-debug these)
@@ -27,3 +29,5 @@ Learning project — see `PROJECT_PLAN.md` for the full roadmap, tech stack, tar
 - **CommonJS, not ESM**: `tsconfig.json` uses `module: commonjs` / `moduleResolution: node` (no `"type": "module"` in `package.json`). This is the standard `nest new` setup — don't switch to ESNext/bundler.
 
 - **Docker `CMD` path**: runtime stage runs `node dist/src/main` (not `dist/main`), because `nest-cli.json` sets `sourceRoot: "src"`.
+
+- **Local `npm run start:dev` fails (ESM/CJS clash)**: the `prisma-client` generator output (`generated/prisma/client.ts`) uses `import.meta.url` for an `__dirname` polyfill. Compiled to CommonJS, this is invalid for Node's CJS loader (`ReferenceError: exports is not defined`, file gets loaded via `importSyncForRequire`). Not fixed — use Docker (`docker compose up -d --build app`) for running/testing the backend instead, that's the verified working path.

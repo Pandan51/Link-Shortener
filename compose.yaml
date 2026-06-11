@@ -8,6 +8,8 @@ services:
       REDIS_URL: redis://cache:6379
       JWT_SECRET: changeme
       JWT_EXPIRES_IN: 15m
+      JWT_REFRESH_SECRET: changeme-refresh
+      JWT_REFRESH_EXPIRES_IN: 7d
     depends_on:
       db:
         condition: service_healthy
