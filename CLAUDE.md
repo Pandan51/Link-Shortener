@@ -17,6 +17,13 @@ Learning project — see `PROJECT_PLAN.md` for the full roadmap, tech stack, tar
   - `POST /auth/logout` — deletes the `RefreshToken` row and clears the cookie
   - **Possible future improvement (deferred, not started)**: refresh token reuse detection — instead of `delete` on rotation, soft-delete/flag rows as `revoked`. If a `revoked` token is ever presented again (signal of theft), revoke *all* refresh tokens for that user, forcing re-login everywhere. Should be addable later without reworking the current flow (just changes what `refresh()` does with the old row + adds a check).
 - **Docker stack** — `docker compose up -d --build` works end to end (db healthy, cache, app on `localhost:3000`).
+- **Step 3 (Redis cache)** — done:
+  - `RedisModule`/`RedisService` (`src/redis/`) — `RedisService extends Redis` (ioredis), connects via `REDIS_URL` in constructor (`super(url)`), `onModuleDestroy` calls `this.quit()`. Wired into `LinksModule`.
+  - `LinksService.findByCode` / `remove` implement cache-aside with a single consistent key format `` `link/${shortCode}` `` everywhere (get/set/del).
+  - `findByCode`: cache miss → DB lookup → `set` + `expire(key, 3600)` (1h TTL) → return. Cache hit → return parsed JSON directly, no DB query.
+  - `remove(id)`: uses the record returned by `prisma.link.delete()` (which includes `shortCode`) to build the invalidation key — `id` (UUID) and `shortCode` are different values, so the cache key can't be derived from `id` alone.
+  - Decision made: raw `ioredis` + manual cache-aside in the service (not `@nestjs/cache-manager`/`CacheInterceptor`), to keep the read/write/invalidate flow explicit for learning.
+  - Verified end-to-end via curl + `docker compose exec cache redis-cli`: miss populates `link/<code>` with TTL ~3600, second GET is a cache hit, DELETE removes the key, subsequent GET 404s (no stale cache).
 
 ## Gotchas discovered (don't re-debug these)
 

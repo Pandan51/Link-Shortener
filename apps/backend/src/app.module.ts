@@ -14,6 +14,7 @@ import { AuthModule } from './auth/auth.module';
     PrismaModule,
     LinksModule,
     AuthModule,
+
   ],
   controllers: [AppController],
   providers: [AppService],
